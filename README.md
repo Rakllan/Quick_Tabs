@@ -1,41 +1,72 @@
 # 🚀 Quick Tabs
 
-**A blazing-fast, cross-platform Rust utility to open multiple browser tabs in a single window.**
-
-![GitHub release](https://img.shields.io/github/v/release/Rakllan/Quick_Tabs)
-![License](https://img.shields.io/github/license/Rakllan/Quick_Tabs)
+**A blazing-fast, cross-platform Rust utility to open multiple browser tabs in a single window.**  
+![GitHub release](https://img.shields.io/github/v/release/Rakllan/Quick_Tabs)  
+![License](https://img.shields.io/github/license/Rakllan/Quick_Tabs)  
 [![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-friendly-blueviolet)](https://hacktoberfest.com/)
 
 ---
 
 ## 🌐 What Is Quick Tabs?
 
-**Quick Tabs** is a lightweight command-line tool built in **Rust** that helps you open multiple URLs at once in a single browser window perfect for productivity, research, or daily startup routines.
-
-Whether you're on **Windows, macOS, or Linux**, Quick Tabs automatically detects installed browsers and launches your links in **private/incognito mode** for a clean session.
+Quick Tabs is a lightweight command-line tool built in Rust that opens multiple URLs at once in a single browser window.  
+Works on **Windows, macOS, and Linux** with automatic browser detection.
 
 ---
 
 ## ✨ Features
 
-- 🔍 **Smart Browser Detection** — Supports Chrome, Brave, Firefox, Edge, Opera, Chromium, and more.
-- 🧠 **Default Browser Recognition** — Automatically identifies your system’s default browser.
-- 🪟 **Single Window Launch** — Opens all URLs in one incognito/private window.
-- 📁 **File-Based Input** — Reads URLs from a simple `links.txt` file.
-- ⚡ **Fast Performance** — Parallel detection for snappy startup.
-- 📝 **Browser Path Export** — Saves detected browser paths to `browsers.txt`.
+- Detects Chrome, Firefox, Brave, Edge, Opera, Chromium, and more  
+- Opens URLs in one window  
+- Reads links from `links.txt` or saved aliases  
+- Saves detected browser paths to `browsers.txt` and `browsers.json`  
+- Fast detection using parallel processing
 
 ---
 
 ## 🛠 Installation
 
-### Prerequisites
-
-Ensure you have **Rust** and **Cargo** installed. Get them from [rustup.rs](https://rustup.rs).
-
-### Build Steps
+Make sure you have Rust and Cargo installed: [rustup.rs](https://rustup.rs)
 
 ```bash
 git clone https://github.com/Rakllan/Quick_Tabs.git
 cd Quick_Tabs
 cargo build --release
+```
+
+## 💻 CLI Usage
+
+### Commands
+
+| Command              | Description                                         |
+|----------------------|-----------------------------------------------------|
+| `launch <tag url>`   | Add a link with a tag                              |
+| `add-link <tag> <url>`  | Add a link with a tag                            |
+| `add-alias <tag> <url>` | Add a shortcut/alias                            |
+| `remove-link <tag>`  | Remove a saved link                                |
+| `remove-alias <tag>` | Remove a saved alias                               |
+| `list-links`         | List all saved links                               |
+| `open-all-links`     | Open all saved links                             |
+| `open-all-aliases`   | Open all saved aliases                           |
+
+### Examples
+
+```bash
+quick_tabs launch google
+quick_tabs add-link rust https://www.rust-lang.org
+quick_tabs add-alias r https://www.rust-lang.org
+quick_tabs remove-link rust
+quick_tabs remove-alias r
+quick_tabs list-links
+quick_tabs open-all-links
+quick_tabs open-all-aliases
+```
+
+## 📂 Configuration Files
+
+- `~/.quick_tabs_links.json` — saved links  
+- `~/.quick_tabs_aliases.json` — saved aliases  
+- `browsers.txt` — detected browser paths  
+- `browsers.json` — JSON list of detected browsers  
+
+*These files are created automatically on first use.*
