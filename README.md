@@ -70,3 +70,16 @@ quick_tabs open-all-aliases
 - `browsers.json` — JSON list of detected browsers  
 
 *These files are created automatically on first use.*
+
+## 🤝 Contributing
+
+We welcome contributions!
+
+* This repository is **Hacktoberfest-friendly**!
+* Please see the **[CONTRIBUTING.md](CONTRIBUTING.md)** file for guidelines on setting up your development environment, submitting pull requests, and coding standards.
+
+---
+
+## 📜 License
+
+Quick Tabs is distributed under the **MIT License**. See the **[LICENSE](LICENSE)** file for more details.
