@@ -1,54 +1,68 @@
-use rayon::prelude::*; // For parallel iteration
-use serde::Serialize; // For serializing structs
-use std::collections::HashSet; // For deduplicating browser paths
-use std::fs::{self, File}; // For file operations
-use std::io::Write; // For writing to files
-use std::path::{Path, PathBuf}; // For handling file paths
+use rayon::prelude::*;
+use serde::Serialize;
+use std::collections::HashSet;
+use std::fs::{self, File};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 #[cfg(target_os = "windows")]
-use winreg::enums::*; // Windows registry enums
+use winreg::enums::*;
 #[cfg(target_os = "windows")]
-use winreg::RegKey; // Windows registry access
+use winreg::RegKey;
 
-use dirs::home_dir; // Get user's home directory
-use shellexpand::tilde; // Expand ~ in paths
+use dirs::home_dir;
+use shellexpand::tilde;
 
+/// Browser entry with normalized fields
 #[derive(Debug, Clone, Serialize)]
 pub struct Browser {
-    pub name: String, // Browser name
-    pub path: String, // Executable path
+    pub name: String,
+    pub path: String,
 }
 
 impl Browser {
     pub fn new(name: &str, path: PathBuf) -> Self {
         Self {
             name: name.to_string(),
-            path: normalize_path(&path), // Normalize path
+            path: normalize_path(&path),
         }
     }
 }
 
 fn normalize_path(p: &Path) -> String {
-    // Canonicalize path or fallback to lossy string
+    // to_string_lossy and canonicalize when possible
     match fs::canonicalize(p) {
         Ok(cp) => cp.to_string_lossy().to_string(),
         Err(_) => p.to_string_lossy().to_string(),
     }
 }
 
+/// Common executable names (both windows and unix-like)
 fn candidate_executables() -> Vec<&'static str> {
-    // Common browser executable names
     vec![
-        "chrome.exe", "google-chrome-stable", "google-chrome", "chromium.exe", "chromium",
-        "firefox.exe", "firefox", "brave.exe", "brave-browser", "msedge.exe", "microsoft-edge",
-        "opera.exe", "opera", "vivaldi.exe", "vivaldi",
+        "chrome.exe",
+        "google-chrome-stable",
+        "google-chrome",
+        "chromium.exe",
+        "chromium",
+        "firefox.exe",
+        "firefox",
+        "brave.exe",
+        "brave-browser",
+        "msedge.exe",
+        "microsoft-edge",
+        "opera.exe",
+        "opera",
+        "vivaldi.exe",
+        "vivaldi",
     ]
 }
 
+/// Candidate full-path locations to check quickly (do not recurse deeply)
 #[cfg(target_os = "windows")]
 fn candidate_paths_quick() -> Vec<PathBuf> {
-    // Known Windows install paths for browsers
     let mut v: Vec<PathBuf> = Vec::new();
+
     let pf = std::env::var("PROGRAMFILES").ok();
     let pfx = std::env::var("PROGRAMFILES(X86)").ok();
     let local = std::env::var("LOCALAPPDATA").ok();
@@ -63,20 +77,36 @@ fn candidate_paths_quick() -> Vec<PathBuf> {
     v
 }
 
+
+/// Quick path checks + PATH probing (parallel)
 fn probe_quick() -> Vec<Browser> {
-    // Fast detection via known paths and PATH
     let mut found = Vec::new();
     let exes = candidate_executables();
 
+    // Check exact common paths
+    let quick_paths = candidate_paths_quick();
+    quick_paths.into_par_iter().for_each(|p| {
+        if p.exists() {
+            // derive name from filename
+            let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "browser".to_string());
+            // write out to vector via file? we'll gather after
+            // we return via channel; but simpler: collect in thread-safe vec using Mutex? We'll return via iterator.
+        }
+    });
+
+    // We'll do a simple approach: check quick paths synchronously (fast) first
     for p in candidate_paths_quick() {
         if p.exists() {
-            let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or("browser".to_string());
+            let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "browser".to_string());
             found.push(Browser::new(&name, p));
         }
     }
 
+    // Check PATH for candidate executables in parallel
     let paths_from_env: Vec<PathBuf> = std::env::var_os("PATH")
-        .map(|paths| std::env::split_paths(&paths).collect())
+        .map(|paths| {
+            std::env::split_paths(&paths).collect()
+        })
         .unwrap_or_default();
 
     let path_found: Vec<Browser> = exes.par_iter()
@@ -92,6 +122,7 @@ fn probe_quick() -> Vec<Browser> {
         })
         .collect();
 
+    // combine and dedup by path
     let mut set = HashSet::new();
     let mut out = Vec::new();
 
@@ -104,10 +135,12 @@ fn probe_quick() -> Vec<Browser> {
     out
 }
 
+/// On Windows: detect browsers from registry (StartMenuInternet)
 #[cfg(target_os = "windows")]
 fn probe_registry() -> Vec<Browser> {
-    // Detect browsers from Windows registry
     let mut result = Vec::new();
+    let hk_local = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
 
     for hive in &[HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER] {
         if let Ok(key) = RegKey::predef(*hive).open_subkey("SOFTWARE\\Clients\\StartMenuInternet") {
@@ -128,18 +161,21 @@ fn probe_registry() -> Vec<Browser> {
         }
     }
 
-    let mut set = HashSet::new();
+    // deduplicate by path
+    let mut set = std::collections::HashSet::new();
     result.into_iter().filter(|b| set.insert(b.path.clone())).collect()
 }
 
+/// On linux: try xdg-settings for default (not exhaustive)
 #[cfg(target_os = "linux")]
 fn detect_default_linux() -> Option<Browser> {
-    // Use xdg-settings to find default browser
     if let Ok(out) = std::process::Command::new("xdg-settings").args(["get", "default-web-browser"]).output() {
         if out.status.success() {
             let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
             if !s.is_empty() {
+                // typical value: firefox.desktop or google-chrome.desktop
                 let exe = s.split('.').next().unwrap_or(&s);
+                // search PATH
                 if let Some(p) = which::which(exe).ok() {
                     return Some(Browser::new(exe, p));
                 }
@@ -151,13 +187,16 @@ fn detect_default_linux() -> Option<Browser> {
 
 #[cfg(target_os = "macos")]
 fn detect_default_macos() -> Option<Browser> {
-    None // macOS detection not implemented
+    // macOS default detection is messy; fallback to common quick probes
+    None
 }
 
+/// Main exported function: detect browsers quickly, then fallback to deeper search if necessary
 pub fn detect_all() -> Vec<Browser> {
-    // Detect all browsers across OS methods
+    // quick probe
     let mut found = probe_quick();
 
+    // windows registry probe
     #[cfg(target_os = "windows")]
     {
         let reg = probe_registry();
@@ -168,6 +207,7 @@ pub fn detect_all() -> Vec<Browser> {
         }
     }
 
+    // linux default check
     #[cfg(target_os = "linux")]
     {
         if let Some(d) = detect_default_linux() {
@@ -177,15 +217,21 @@ pub fn detect_all() -> Vec<Browser> {
         }
     }
 
+    // mac default stub skipped
+
+    // optionally write outputs for external use
     write_outputs(&found).ok();
+
     found
 }
 
+/// Write JSON and text outputs
 fn write_outputs(found: &Vec<Browser>) -> std::io::Result<()> {
-    // Write browser list to JSON and TXT files
-    let json = serde_json::to_string_pretty(found).unwrap_or("[]".to_string());
+    // json
+    let json = serde_json::to_string_pretty(found).unwrap_or_else(|_| "[]".to_string());
     fs::write("browsers.json", json)?;
 
+    // text style
     let mut file = File::create("browsers.txt")?;
     for b in found {
         writeln!(file, "{} = {}", b.name, b.path)?;
