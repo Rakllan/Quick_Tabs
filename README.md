@@ -82,4 +82,4 @@ We welcome contributions!
 
 ## 📜 License
 
-Quick Tabs is distributed under the **MIT License**. See the **[LICENSE](LICENSE)** file for more details.
+Quick Tabs is distributed under the **GNU GPL License**. See the **[LICENSE](LICENSE)** file for more details.
