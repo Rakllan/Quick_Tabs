@@ -2,7 +2,7 @@
 
 **A blazing-fast, cross-platform Rust utility to open multiple browser tabs in a single window.**  
 ![GitHub release](https://img.shields.io/github/v/release/Rakllan/Quick_Tabs)  
-![License](https://img.shields.io/github/license/Rakllan/Quick_Tabs)   
+![License](https://img.shields.io/github/license/Rakllan/Quick_Tabs?style=flat)
 [![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-friendly-blueviolet)](https://hacktoberfest.com/)
 
 ---
