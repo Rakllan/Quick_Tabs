@@ -1,12 +1,16 @@
+# Cargo.toml
 [package]
 name = "quick_tabs"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# Using clap 4.5 for modern CLI argument parsing
 clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 dirs = "5.0"
 which = "6.0"
-open = "5.3.2"
+# Windows specific library for robust registry access
+#[cfg(target_os = "windows")]
+winreg = "0.51" 
